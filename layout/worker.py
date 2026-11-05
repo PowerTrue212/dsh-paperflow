@@ -17,13 +17,21 @@ import os
 import sys
 import tempfile
 
-from paddleocr import LayoutDetection
+# Paddle 3.3's oneDNN path crashes on the layout model
+# (ConvertPirAttribute2RuntimeAttribute ...). Force the plain CPU kernels.
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_use_onednn", "0")
+
+from paddleocr import LayoutDetection  # noqa: E402
 
 MODEL = os.environ.get("LAYOUT_MODEL", "PP-DocLayout-M")
 
 
 def main():
-    model = LayoutDetection(model_name=MODEL)
+    try:
+        model = LayoutDetection(model_name=MODEL, enable_mkldnn=False)
+    except TypeError:
+        model = LayoutDetection(model_name=MODEL)
     model_ready = True
     for line in sys.stdin:
         line = line.strip()

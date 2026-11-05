@@ -27,9 +27,9 @@ apply(ctx, {
   dataDir,
   layout: {
     enabled: true,
-    python: process.execPath,
-    worker: path.join(here, 'mock-layout-worker.mjs'),
-    model: 'mock',
+    python: path.join(here, '..', '.venv-layout', 'Scripts', 'python.exe'),
+    worker: path.join(here, '..', 'layout', 'worker.py'),
+    model: 'PP-DocLayout-M',
   },
 })
 

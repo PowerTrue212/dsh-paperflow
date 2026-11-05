@@ -112,13 +112,20 @@ export class LayoutClient {
   }
 }
 
-function mergeBoxes(boxes) {
+function mergeBoxes(boxes, pageWidth) {
   const merged = []
+  const gapLimit = pageWidth * 0.03
   for (const box of boxes.slice().sort((a, b) => a.y0 - b.y0)) {
     const target = merged.find((item) => {
       const overlapX = Math.min(item.x1, box.x1) - Math.max(item.x0, box.x0)
       const narrower = Math.min(item.x1 - item.x0, box.x1 - box.x0)
-      return overlapX > narrower * 0.4 && box.y0 - item.y1 < 0.03
+      const verticalGap = box.y0 - item.y1
+      const overlapY = Math.min(item.y1, box.y1) - Math.max(item.y0, box.y0)
+      const shorter = Math.min(item.y1 - item.y0, box.y1 - box.y0)
+      // stacked sub-figures
+      if (overlapX > narrower * 0.4 && verticalGap < 0.03) return true
+      // side-by-side panels of one figure (charts, subplots)
+      return overlapY > shorter * 0.6 && verticalGap < 0 && Math.abs(box.x0 - item.x1) < gapLimit
     })
     if (target) {
       target.x0 = Math.min(target.x0, box.x0)
@@ -161,7 +168,7 @@ export function layoutRegions(boxes, pageWidth, pageHeight) {
     }
   }
   return [
-    ...mergeBoxes(tables).map((box) => toRegion(box, 'table')),
-    ...mergeBoxes(figures).map((box) => toRegion(box, 'figure')),
+    ...mergeBoxes(tables, pageWidth).map((box) => toRegion(box, 'table')),
+    ...mergeBoxes(figures, pageWidth).map((box) => toRegion(box, 'figure')),
   ]
 }
