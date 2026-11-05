@@ -1,4 +1,4 @@
-# dsh-paper-reader
+# dsh-paperflow
 
 A right-sidebar paper reader for DSH (DeepSeek Harness): reflows two-column PDFs and web articles into a single reading stream, translates paragraph by paragraph with KaTeX formulas, and works side by side with the native chat.
 
@@ -20,7 +20,7 @@ A right-sidebar paper reader for DSH (DeepSeek Harness): reflows two-column PDFs
 需要已安装 DSH desktop（Web UI）。
 
 ```bash
-cd dsh-paper-reader
+cd dsh-paperflow
 pnpm install
 ```
 
@@ -40,7 +40,7 @@ pnpm install
 ```
 
 - `vaultDir`：配置后，笔记导出到 `<vaultDir>/sources/self/`，问答导出到 `<vaultDir>/sources/ai/`；不配置则不写任何文件。
-- `dataDir`：默认 `%LOCALAPPDATA%\dsh-paper-reader`（首次启动会尝试把旧的 `dsh-paper-reflow` 目录迁移过来）。
+- `dataDir`：默认 `%LOCALAPPDATA%\dsh-paperflow`（首次启动会尝试把旧的 `dsh-paper-reflow` 目录迁移过来）。
 
 ## 使用
 

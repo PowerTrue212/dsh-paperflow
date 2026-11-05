@@ -35,22 +35,27 @@ export const inject = ['webServer']
 
 export function apply(ctx, config) {
   const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
-  const defaultBase = path.join(localAppData, 'dsh-paper-reader')
-  const legacyBase = path.join(localAppData, 'dsh-paper-reflow')
-  if (!config?.dataDir && !fsSync.existsSync(defaultBase) && fsSync.existsSync(legacyBase)) {
-    try {
-      fsSync.renameSync(legacyBase, defaultBase)
-    } catch {
-      /* keep using the legacy directory when it is locked */
+  const defaultBase = path.join(localAppData, 'dsh-paperflow')
+  const legacyBases = [
+    path.join(localAppData, 'dsh-paper-reader'),
+    path.join(localAppData, 'dsh-paper-reflow'),
+  ]
+  if (!config?.dataDir) {
+    for (const legacyBase of legacyBases) {
+      if (fsSync.existsSync(defaultBase)) break
+      if (!fsSync.existsSync(legacyBase)) continue
+      try {
+        fsSync.renameSync(legacyBase, defaultBase)
+      } catch {
+        /* keep using the legacy directory when it is locked */
+      }
     }
   }
   const base = config?.dataDir
     ? path.resolve(String(config.dataDir))
     : fsSync.existsSync(defaultBase)
       ? defaultBase
-      : fsSync.existsSync(legacyBase)
-        ? legacyBase
-        : defaultBase
+      : legacyBases.find((item) => fsSync.existsSync(item)) || defaultBase
   const papersDir = path.join(base, 'papers')
   const indexPath = path.join(base, 'index.json')
 
@@ -688,7 +693,7 @@ export function apply(ctx, config) {
       : url.pathname
 
     if (sub === '/health') {
-      send(res, 200, { ok: true, name: 'dsh-paper-reader' })
+      send(res, 200, { ok: true, name: 'dsh-paperflow' })
       return
     }
 
@@ -1164,7 +1169,7 @@ export function apply(ctx, config) {
     try {
       response = await fetch(url, {
         redirect: 'follow',
-        headers: { 'user-agent': 'Mozilla/5.0 dsh-paper-reader' },
+        headers: { 'user-agent': 'Mozilla/5.0 dsh-paperflow' },
         signal: AbortSignal.timeout(60_000),
       })
     } catch (error) {
@@ -1630,7 +1635,7 @@ export function apply(ctx, config) {
       response = await fetch(source, {
         redirect: 'follow',
         headers: {
-          'user-agent': 'Mozilla/5.0 dsh-paper-reader',
+          'user-agent': 'Mozilla/5.0 dsh-paperflow',
           ...(paper.sourceUrl ? { referer: paper.sourceUrl } : {}),
         },
         signal: AbortSignal.timeout(30_000),

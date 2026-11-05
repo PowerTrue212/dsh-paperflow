@@ -1,8 +1,8 @@
 {
-  "name": "dsh-paper-reader",
+  "name": "dsh-paperflow",
   "version": "0.1.0",
   "type": "module",
-  "description": "Paper reader panel for DSH: reflowed, bilingual reading of two-column PDFs and web articles beside the native chat.",
+  "description": "PaperFlow — a right-sidebar paper reader for DSH: reflowed bilingual reading of two-column PDFs and web articles.",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -47,5 +47,14 @@
     "reader",
     "translation",
     "katex"
-  ]
+  ],
+  "author": "PowerTrue212",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PowerTrue212/dsh-paperflow.git"
+  },
+  "homepage": "https://github.com/PowerTrue212/dsh-paperflow#readme",
+  "bugs": {
+    "url": "https://github.com/PowerTrue212/dsh-paperflow/issues"
+  }
 }
