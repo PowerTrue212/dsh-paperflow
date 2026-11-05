@@ -7,7 +7,8 @@ __pycache__/
 # Local plugin data and test artifacts
 spike/.test-*/
 spike/.test-vault/
-spike/fixtures/
+spike/fixtures/*
+!spike/fixtures/smoke.pdf
 
 # Generated images / logs
 docs/assets/raw/

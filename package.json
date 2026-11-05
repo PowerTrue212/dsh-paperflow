@@ -19,7 +19,9 @@
     "locale/*.json",
     "icon.svg",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "layout/setup.ps1",
+    "CHANGELOG.md"
   ],
   "dependencies": {
     "@napi-rs/canvas": "1.1.0",
@@ -58,5 +60,9 @@
   "homepage": "https://github.com/PowerTrue212/dsh-paperflow#readme",
   "bugs": {
     "url": "https://github.com/PowerTrue212/dsh-paperflow/issues"
+  },
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node --check engine.mjs && node --check layout.mjs",
+    "test": "node spike/ci-test.mjs"
   }
 }

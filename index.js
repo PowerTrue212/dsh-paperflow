@@ -1594,7 +1594,9 @@ export function apply(ctx, config) {
       exportPath = await writeNotesExport(paper, cache.data.notes)
       await saveIndex(await loadIndex())
     } catch (error) {
-      console.error('[paper-reflow] auto export notes failed', error)
+      // Without a configured vault the note still lives in notes.json; only
+      // a real write failure deserves a warning.
+      if (config?.vaultDir) console.error('[paper-reflow] auto export notes failed', error)
     }
     send(res, 201, { note, exportPath })
   }

@@ -1,5 +1,7 @@
 # dsh-paperflow
 
+![CI](https://github.com/PowerTrue212/dsh-paperflow/actions/workflows/ci.yml/badge.svg)
+
 DSH（DeepSeek Harness）右侧栏论文阅读器：把双栏 PDF / 网页文章按阅读顺序重排，逐段翻译成中文（公式用 KaTeX 渲染），并与左侧原生对话联动。
 
 ![PaperFlow 阅读器](docs/assets/hero.png)
@@ -65,6 +67,12 @@ python -m venv .venv-layout
 .venv-layout\Scripts\python -m pip install paddlepaddle paddleocr
 ```
 
+或者直接跑安装脚本（会自动建 venv、装依赖并验证 import）：
+
+```powershell
+.\layout\setup.ps1 -Python C:\Python312\python.exe
+```
+
 模型能回答的页面不再跑启发式检测，避免误判；模型失败时才回退。
 
 模型在首次推理时自动下载（M ≈ 23 MB，L ≈ 124 MB），之后可离线使用；不需要 API Key，不按页计费。
@@ -114,12 +122,17 @@ Host 的 HTTP 路由统一挂在 `/paper-reflow/*` 下，并用 `connection.requ
 
 ```bash
 pnpm install
-node --check index.js && node --check client.js && node --check engine.mjs && node --check layout.mjs
-node spike/host-test.mjs   # 需要 spike/fixtures/ 里的测试 PDF
+pnpm check   # node --check：index / client / engine / layout
+pnpm test    # 合成 PDF 的烟雾测试（上传、取页、文献库、笔记）
 ```
 
-`spike/` 下是开发期的脚本和对照实验；测试用 PDF 和生成的图片不入库（见 `spike/README.md`）。
+CI（GitHub Actions）在 Ubuntu + Node 24 上跑 `pnpm check` 和 `pnpm test`；测试用的
+`spike/fixtures/smoke.pdf` 是脚本生成的合成 PDF，不含第三方论文。
+
+`spike/` 下还有开发期的对照实验和版面模型测试；真实论文的 PDF 和生成的图片不入库（见 `spike/README.md`）。
 
 ## License
 
 [MIT](./LICENSE)
+
+版本记录见 [CHANGELOG.md](./CHANGELOG.md)。
