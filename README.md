@@ -1,6 +1,6 @@
 # dsh-paper-reader
 
-A right-sidebar paper reader for [DSH (DeepSeek Harness)](https://github.com/deepseek-ai): reflows two-column PDFs and web articles into a single reading stream, translates paragraph by paragraph with KaTeX formulas, and works side by side with the native chat.
+A right-sidebar paper reader for DSH (DeepSeek Harness): reflows two-column PDFs and web articles into a single reading stream, translates paragraph by paragraph with KaTeX formulas, and works side by side with the native chat.
 
 一个 DSH 右侧栏论文阅读器：把双栏 PDF / 网页文章按阅读顺序重排，逐段翻译成中文（公式用 KaTeX 渲染），并与左侧原生对话联动。
 
@@ -72,6 +72,7 @@ Host 的 HTTP 路由统一挂在 `/paper-reflow/*` 下，并用 `connection.requ
 - SSRF 防护只覆盖常见内网地址段，不防 DNS rebinding；建议只在本机使用。
 - 翻译和公式改写使用 DSH 的默认模型，效果取决于模型。
 - 首次打开较大的 PDF 会逐页解析，稍慢；解析结果有缓存。
+- 界面文案目前以中文为主；`locale/` 里的侧边栏标题有中英两份。
 
 ## 开发
 
