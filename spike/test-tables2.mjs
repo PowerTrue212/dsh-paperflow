@@ -1,6 +1,6 @@
 import { openDocument, reflowPage } from '../engine.mjs'
 
-const base = process.env.LOCALAPPDATA + '\\dsh-paper-reflow\\papers\\'
+const base = process.env.LOCALAPPDATA + '\\dsh-paperflow\\papers\\'
 const cases = [
   ['468cf47e7ce0', 9],
   ['468cf47e7ce0', 10],

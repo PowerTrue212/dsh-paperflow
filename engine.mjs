@@ -486,6 +486,7 @@ function detectTableRegions(lines, width, height) {
         x1,
         clusters: clusters.length,
         checks,
+        segments: clusters.map((cluster) => ({ x0: cluster.x0, x1: cluster.x1, text: cluster.text })),
         text,
         loose: (() => {
           const scored = clusters.map((cluster) => {
@@ -651,6 +652,9 @@ function detectTableRegions(lines, width, height) {
     })
   }
 
+  // Column-filling diagrams (ResNet page 4: three architecture columns made
+  // of short labels). If the column above a "Figure N" caption is almost
+  // entirely short labels, treat the whole column as one figure.
   const ranked = regions.slice().sort((a, b) => {
     const areaA = (a.bbox[2] - a.bbox[0]) * (a.bbox[3] - a.bbox[1])
     const areaB = (b.bbox[2] - b.bbox[0]) * (b.bbox[3] - b.bbox[1])
