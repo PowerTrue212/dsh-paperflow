@@ -486,7 +486,6 @@ function detectTableRegions(lines, width, height) {
         x1,
         clusters: clusters.length,
         checks,
-        segments: clusters.map((cluster) => ({ x0: cluster.x0, x1: cluster.x1, text: cluster.text })),
         text,
         loose: (() => {
           const scored = clusters.map((cluster) => {
