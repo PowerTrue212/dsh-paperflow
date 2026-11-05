@@ -60,6 +60,8 @@ python -m venv .venv-layout
 .venv-layout\Scripts\python -m pip install paddlepaddle paddleocr
 ```
 
+模型能回答的页面不再跑启发式检测，避免误判；模型失败时才回退。
+
 模型在首次推理时自动下载（M ≈ 23 MB，L ≈ 124 MB），之后可离线使用；不需要 API Key，不按页计费。
 如果解释器/模型不可用，插件会退回到内置启发式，并在控制台提示一次。
 

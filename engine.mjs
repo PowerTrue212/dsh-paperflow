@@ -853,7 +853,11 @@ export async function reflowPage(doc, pageNumber, mode = 'auto', options = {}) {
   const viewport = page.getViewport({ scale: 1 })
   const content = await page.getTextContent({ includeMarkedContent: false })
   const lines = buildLines(content.items, viewport.height)
-  const tables = detectTableRegions(lines, viewport.width, viewport.height)
+  // When the layout model answers for this page, it is authoritative: run
+  // only its regions and skip the heuristic table/figure detectors, which
+  // produce false positives on pages the model sees as plain text.
+  const skipHeuristics = options.skipHeuristics === true
+  const tables = skipHeuristics ? [] : detectTableRegions(lines, viewport.width, viewport.height)
   const tableBoxes = tables.map((region) => region.bbox)
   const isInside = (line, boxes) => {
     const cx = (line.box[0] + line.box[2]) / 2
@@ -861,7 +865,9 @@ export async function reflowPage(doc, pageNumber, mode = 'auto', options = {}) {
     return boxes.some((box) => cx >= box[0] - 2 && cx <= box[2] + 2 && cy >= box[1] - 2 && cy <= box[3] + 2)
   }
   const withoutTables = lines.filter((line) => !isInside(line, tableBoxes))
-  const rawFigures = await collectFigureRegions(page, withoutTables, viewport.width, viewport.height)
+  const rawFigures = skipHeuristics
+    ? []
+    : await collectFigureRegions(page, withoutTables, viewport.width, viewport.height)
   // A vector figure sits among short labels; a cluster that reaches into
   // full-width body text should be trimmed to its text-free part instead of
   // swallowing paragraphs.

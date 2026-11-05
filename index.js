@@ -30,7 +30,7 @@ try {
 
 const MAX_BYTES = 40 * 1024 * 1024
 const MAX_PAGES = 250
-const CACHE_VERSION = 10
+const CACHE_VERSION = 11
 const TRANSLATION_VERSION = 2
 const ID_RE = /^[a-f0-9]{12}$/
 const MODES = new Set(['auto', 'two', 'single'])
@@ -275,7 +275,7 @@ export function apply(ctx, config) {
 
   async function layoutRegionsForPage(id, doc, pageNumber) {
     const settings = config && config.layout
-    if (!settings || !settings.enabled) return { regions: [], twoColumn: false }
+    if (!settings || !settings.enabled) return { regions: [], twoColumn: false, ok: false }
     const cache = await layoutCacheFor(id)
     const model = settings.model ? String(settings.model) : 'PP-DocLayout-M'
     if (cache.data.model !== model) {
@@ -283,18 +283,18 @@ export function apply(ctx, config) {
       persistLayoutCache(id)
     }
     const key = String(pageNumber)
-    if (cache.data.pages[key]) return cache.data.pages[key]
+    if (cache.data.pages[key]) return { ...cache.data.pages[key], ok: cache.data.pages[key].ok !== false }
     try {
       const detected = await detectLayoutPage(doc, pageNumber, settings)
       cache.data.pages[key] = detected
       persistLayoutCache(id)
-      return detected
+      return { ...detected, ok: true }
     } catch (error) {
       if (!layoutWarned) {
         layoutWarned = true
         console.error('[paperflow] layout detection unavailable, falling back to heuristics:', error.message)
       }
-      return { regions: [], twoColumn: false }
+      return { regions: [], twoColumn: false, ok: false }
     } finally {
       startLayoutScan(id, doc, settings)
     }
@@ -1387,6 +1387,7 @@ export function apply(ctx, config) {
       const page = await reflowPage(doc, number, mode, {
         extraRegions: layout.regions,
         forceTwo: layout.twoColumn,
+        skipHeuristics: layout.ok,
       })
       persistPage(id, key, page)
       send(res, 200, page)
