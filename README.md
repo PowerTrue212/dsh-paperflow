@@ -53,9 +53,7 @@ pnpm install
 
 通过 DSH 的 `plugin_manager` 使用 `install_bundle` 将本目录安装为插件，或通过 `link:` 添加至当前 profile 的 `dependencies`。
 
-### 安装版面模型（必需）
-
-没有版面模型时，复杂插图、表格和“图占半栏”的页面会退回启发式，效果会明显下降。
+### 安装版面模型
 
 ```powershell
 .\layout\setup.ps1 -Python C:\Python312\python.exe
@@ -76,27 +74,20 @@ pnpm install
   config:
     vaultDir: D:\paper-vault  # 可选：知识库根目录
     dataDir: D:\paper-reader  # 可选：文献库数据目录
-    layout:                   # 通常不用写：安装 .venv-layout 后自动启用
-      enabled: true
-      python: C:\Python312\python.exe
-      model: PP-DocLayout-M
 ```
 
 - `vaultDir`：配置后，笔记导出到 `<vaultDir>/sources/self/`，问答导出到 `<vaultDir>/sources/ai/`；不配置则不写任何文件。
 - `dataDir`：默认 `%LOCALAPPDATA%\dsh-paperflow`（首次启动会把旧的 `dsh-paper-reflow` / `dsh-paper-reader` 目录迁移过来）。
-- `layout`：通常不需要写；安装 `.venv-layout` 后自动启用。可以用 `model` 换模型，或用 `enabled: false` 临时关闭。
+- 版面模型不需要配置；跑过 `layout/setup.ps1` 后自动启用。想换模型时加 `layout.model: PP-DocLayout-L` 即可。
 
 ## 本地版面模型
 
-安装后默认启用（检测到 `.venv-layout`，或配置了 `layout.python`）。Host 会把每页渲染成 2x PNG，交给本机 Python 的
+安装后自动启用（检测到 `.venv-layout`，或配置了 `layout.python`）。Host 会把每页渲染成 2x PNG，交给本机 Python 的
 [PaddleOCR LayoutDetection](https://www.paddleocr.ai/main/en/version3.x/module_usage/layout_detection.html)
 找 `figure` / `table` 外框，再把归一化坐标映射回 PDF 点裁剪。这样由多张小图、
 箭头和文字拼成的整图也能作为一张图提取；图注保留为文本。
 
 模型在首次推理时自动下载（M ≈ 23 MB，L ≈ 124 MB），之后可离线使用；不需要 API Key，不按页计费。
-
-如果解释器/模型不可用，插件会退回内置启发式，并在控制台提示一次。这个回退明显不如模型，
-建议按上面的安装步骤把 `.venv-layout` 装好；临时排查问题可以用 `layout.enabled: false` 关闭。
 
 第一次打开一篇论文时，Host 会在后台把其余页面依次跑一遍，结果写进 `papers/<id>/layout.json`；
 之后翻页直接读缓存，不再等模型。可以把它理解成“开头慢一次，后面都快”。
@@ -105,7 +96,7 @@ pnpm install
 
 ## 已知限制
 
-- 启发式回退不支持扫描件（无文本层）、复杂合并单元格和竖排文字；版面模型漏检的页不会再用启发式补救。
+- 版面模型对扫描件（无文本层）、复杂合并单元格和竖排文字的支持有限。
 - 网页只提取 HTML 正文；纯 JavaScript 渲染或需要登录的页面可能抓不到；只取 `<img>`，不含 CSS 背景图。
 - Node 的 `fetch` 不走系统代理，被墙站点会失败。
 - SSRF 防护只覆盖常见内网地址段，不防 DNS rebinding；建议只在本机可信环境使用。
