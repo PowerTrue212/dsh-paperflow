@@ -35,7 +35,7 @@ pnpm install
 ```yaml
 - id: paper-reflow
   config:
-    vaultDir: D:\MY_BRAIN      # 可选：知识库根目录
+    vaultDir: D:\paper-vault  # 可选：知识库根目录
     dataDir: D:\paper-reader   # 可选：文献库数据目录
 ```
 
