@@ -778,14 +778,15 @@ export function bestTitle(blocks) {
   return best.text.trim()
 }
 
-function blocksFromLines(width, height, lines, mode, pageNumber, regions) {
+function blocksFromLines(width, height, lines, mode, pageNumber, regions, forceTwo = false) {
   const kept = lines.filter(
     (line) => !(/^\d{1,3}$/.test(line.text) && (line.box[1] < height * 0.09 || line.box[3] > height * 0.93)),
   )
   const lineBoxes = kept.filter((line) => line.text.length >= 5).map((line) => line.box)
   const detected = detectColumns(width, lineBoxes)
-  const two = mode === 'two' ? true : mode === 'single' ? false : detected.two
-  const ordered = orderLines(kept, detected.split, two)
+  const two = mode === 'two' ? true : mode === 'single' ? false : forceTwo ? true : detected.two
+  const split = forceTwo && mode !== 'single' ? width / 2 : detected.split
+  const ordered = orderLines(kept, split, two)
 
   const runs = []
   for (const entry of ordered) {
@@ -819,7 +820,7 @@ function blocksFromLines(width, height, lines, mode, pageNumber, regions) {
     }
     for (const chunk of splitLineGroups(run.lines)) push(joinLines(chunk.map((line) => line.text)), run.column, chunk)
   }
-  const withRegions = regions && regions.length ? insertRegions(blocks, regions, detected.split, pageNumber) : blocks
+  const withRegions = regions && regions.length ? insertRegions(blocks, regions, split, pageNumber) : blocks
   if (pageNumber === 1) markMetaBlocks(withRegions, height)
   return {
     layout: two ? 'two' : 'single',
@@ -914,7 +915,15 @@ export async function reflowPage(doc, pageNumber, mode = 'auto', options = {}) {
   if (extraRegions.length) regions.push(...extraRegions)
   const allBoxes = regions.map((region) => region.bbox)
   const outside = lines.filter((line) => !isInside(line, allBoxes))
-  const result = blocksFromLines(viewport.width, viewport.height, outside, mode, pageNumber, regions)
+  const result = blocksFromLines(
+    viewport.width,
+    viewport.height,
+    outside,
+    mode,
+    pageNumber,
+    regions,
+    options.forceTwo === true,
+  )
   return {
     page: pageNumber,
     width: Math.round(viewport.width * 10) / 10,

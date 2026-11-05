@@ -78,6 +78,8 @@ export function apply(ctx, config) {
   let canvasModule = null
   let layoutClient = null
   let layoutWarned = false
+  const layoutPaperCaches = new Map()
+  const layoutScans = new Set()
 
   function guard(req, res) {
     // Resolve per request: the connection service may activate after this
@@ -176,30 +178,125 @@ export function apply(ctx, config) {
     return canvas
   }
 
-  async function layoutRegionsForPage(doc, pageNumber) {
-    const settings = config && config.layout
-    if (!settings || !settings.enabled) return []
-    try {
-      if (!layoutClient) {
-        layoutClient = new LayoutClient({
-          python: settings.python ? String(settings.python) : 'python',
-          worker: settings.worker ? path.resolve(String(settings.worker)) : path.join(pluginRoot, 'layout', 'worker.py'),
-          model: settings.model ? String(settings.model) : 'PP-DocLayout-M',
-          timeout: Number(settings.timeout) || 120_000,
-        })
+  async function detectLayoutPage(doc, pageNumber, settings) {
+    if (!layoutClient) {
+      layoutClient = new LayoutClient({
+        python: settings.python ? String(settings.python) : 'python',
+        worker: settings.worker ? path.resolve(String(settings.worker)) : path.join(pluginRoot, 'layout', 'worker.py'),
+        model: settings.model ? String(settings.model) : 'PP-DocLayout-M',
+        timeout: Number(settings.timeout) || 120_000,
+      })
+    }
+    const page = await doc.getPage(pageNumber)
+    const viewport = page.getViewport({ scale: 1 })
+    const canvas = await renderPage(doc, pageNumber, 2)
+    const image = await canvas.encode('png')
+    const boxes = await layoutClient.detect(image, canvas.width, canvas.height)
+    // When the model sees text on both sides of the page, the page is
+    // two-column even if one column is mostly a figure (which makes the
+    // projection-based detector think it is single-column).
+    const textLabels = new Set([
+      'text',
+      'abstract',
+      'figure_title',
+      'table_title',
+      'chart_title',
+      'paragraph_title',
+      'doc_title',
+      'title',
+    ])
+    let left = 0
+    let right = 0
+    for (const box of boxes) {
+      if (!textLabels.has(String(box.label || '').toLowerCase())) continue
+      const center = (Number(box.x0) + Number(box.x1)) / 2
+      if (center < 0.45) left += 1
+      else if (center > 0.55) right += 1
+    }
+    return {
+      regions: boxesToRegions(boxes, viewport.width, viewport.height),
+      twoColumn: left > 0 && right > 0,
+    }
+  }
+
+  async function layoutCacheFor(id) {
+    const existing = layoutPaperCaches.get(id)
+    if (existing) {
+      await existing.loading
+      return existing
+    }
+    const entry = { data: { version: 1, model: '', pages: {} }, writing: Promise.resolve() }
+    entry.loading = fs
+      .readFile(path.join(papersDir, id, 'layout.json'), 'utf8')
+      .then((text) => {
+        const parsed = JSON.parse(text)
+        if (parsed && parsed.pages && typeof parsed.pages === 'object') entry.data = parsed
+      })
+      .catch(() => {})
+    layoutPaperCaches.set(id, entry)
+    await entry.loading
+    return entry
+  }
+
+  function persistLayoutCache(id) {
+    const entry = layoutPaperCaches.get(id)
+    if (!entry) return
+    const snapshot = JSON.stringify(entry.data)
+    entry.writing = entry.writing
+      .then(async () => {
+        const tmp = path.join(papersDir, id, 'layout.json.tmp')
+        await fs.writeFile(tmp, snapshot, 'utf8')
+        await fs.rename(tmp, path.join(papersDir, id, 'layout.json'))
+      })
+      .catch(() => {})
+  }
+
+  function startLayoutScan(id, doc, settings) {
+    if (layoutScans.has(id)) return
+    layoutScans.add(id)
+    ;(async () => {
+      try {
+        const cache = await layoutCacheFor(id)
+        for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
+          if (cache.data.pages[String(pageNumber)]) continue
+          try {
+            cache.data.pages[String(pageNumber)] = await detectLayoutPage(doc, pageNumber, settings)
+          } catch {
+            /* keep going: a single bad page should not stop the scan */
+          }
+          if (pageNumber % 5 === 0) persistLayoutCache(id)
+        }
+        persistLayoutCache(id)
+      } finally {
+        layoutScans.delete(id)
       }
-      const page = await doc.getPage(pageNumber)
-      const viewport = page.getViewport({ scale: 1 })
-      const canvas = await renderPage(doc, pageNumber, 2)
-      const image = await canvas.encode('png')
-      const boxes = await layoutClient.detect(image, canvas.width, canvas.height)
-      return boxesToRegions(boxes, viewport.width, viewport.height)
+    })().catch(() => {})
+  }
+
+  async function layoutRegionsForPage(id, doc, pageNumber) {
+    const settings = config && config.layout
+    if (!settings || !settings.enabled) return { regions: [], twoColumn: false }
+    const cache = await layoutCacheFor(id)
+    const model = settings.model ? String(settings.model) : 'PP-DocLayout-M'
+    if (cache.data.model !== model) {
+      cache.data = { version: 1, model, pages: {} }
+      persistLayoutCache(id)
+    }
+    const key = String(pageNumber)
+    if (cache.data.pages[key]) return cache.data.pages[key]
+    try {
+      const detected = await detectLayoutPage(doc, pageNumber, settings)
+      cache.data.pages[key] = detected
+      persistLayoutCache(id)
+      return detected
     } catch (error) {
       if (!layoutWarned) {
         layoutWarned = true
         console.error('[paperflow] layout detection unavailable, falling back to heuristics:', error.message)
       }
-      return []
+      return { regions: [], twoColumn: false }
+    } finally {
+      startLayoutScan(id, doc, settings)
     }
   }
 
@@ -1277,15 +1374,20 @@ export function apply(ctx, config) {
     }
 
     const cache = await pageCache(id)
-    const key = `${number}:${mode}${config?.layout?.enabled ? ':layout' : ''}`
+    const key = `${number}:${mode}${
+      config?.layout?.enabled ? `:layout:${String(config.layout.model || 'default').replace(/[^a-z0-9]/gi, '')}` : ''
+    }`
     if (cache.data.pages[key]) {
       send(res, 200, cache.data.pages[key])
       return
     }
     try {
       const doc = await ensureDocument(id)
-      const extraRegions = await layoutRegionsForPage(doc, number)
-      const page = await reflowPage(doc, number, mode, { extraRegions })
+      const layout = await layoutRegionsForPage(id, doc, number)
+      const page = await reflowPage(doc, number, mode, {
+        extraRegions: layout.regions,
+        forceTwo: layout.twoColumn,
+      })
       persistPage(id, key, page)
       send(res, 200, page)
     } catch (error) {
