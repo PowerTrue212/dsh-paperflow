@@ -8,6 +8,7 @@ spike/.test-vault/
 spike/fixtures/
 
 # Generated images / logs
+docs/assets/raw/
 spike/*.png
 spike/*.log
 *.log

@@ -4,6 +4,10 @@ A right-sidebar paper reader for DSH (DeepSeek Harness): reflows two-column PDFs
 
 一个 DSH 右侧栏论文阅读器：把双栏 PDF / 网页文章按阅读顺序重排，逐段翻译成中文（公式用 KaTeX 渲染），并与左侧原生对话联动。
 
+![PaperFlow 阅读器](docs/assets/hero.png)
+
+左：DSH 原生对话；右：论文阅读器（对照模式、KaTeX 公式、整图裁切）。
+
 ## 功能
 
 - **PDF 阅读**：双栏/单栏自动识别、阅读顺序重排、图片与表格按区域裁切、页码跳转、原页对照。
@@ -14,6 +18,8 @@ A right-sidebar paper reader for DSH (DeepSeek Harness): reflows two-column PDFs
 - **笔记**：段级批注；可导出到 Obsidian 风格 vault 的 `sources/self/`，问答可转存 `sources/ai/`。
 - **文献库**：文件夹、搜索、改名、删除；支持 arXiv / 网页 / 本地 PDF 入库。
 - **每篇论文独立会话**：一键切换，聊天记录按论文隔离。
+
+![整图与逐段翻译](docs/assets/figure.png)
 
 ## 安装
 
