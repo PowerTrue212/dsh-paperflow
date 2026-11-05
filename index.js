@@ -1277,7 +1277,7 @@ export function apply(ctx, config) {
     }
 
     const cache = await pageCache(id)
-    const key = `${number}:${mode}`
+    const key = `${number}:${mode}${config?.layout?.enabled ? ':layout' : ''}`
     if (cache.data.pages[key]) {
       send(res, 200, cache.data.pages[key])
       return
