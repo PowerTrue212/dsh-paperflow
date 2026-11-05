@@ -10,11 +10,15 @@ import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
 import katex from 'katex'
 
 import { bestTitle, documentInfo, openDocument, reflowPage } from './engine.mjs'
+import { LayoutClient, layoutRegions as boxesToRegions } from './layout.mjs'
+
+const pluginRoot = path.dirname(fileURLToPath(import.meta.url))
 
 const require = createRequire(import.meta.url)
 let katexDist = ''
@@ -72,6 +76,8 @@ export function apply(ctx, config) {
 
   const connection = ctx.get('connection')
   let canvasModule = null
+  let layoutClient = null
+  let layoutWarned = false
 
   function guard(req, res) {
     // Resolve per request: the connection service may activate after this
@@ -168,6 +174,33 @@ export function apply(ctx, config) {
     context.fillRect(0, 0, canvas.width, canvas.height)
     await page.render({ canvasContext: context, viewport }).promise
     return canvas
+  }
+
+  async function layoutRegionsForPage(doc, pageNumber) {
+    const settings = config && config.layout
+    if (!settings || !settings.enabled) return []
+    try {
+      if (!layoutClient) {
+        layoutClient = new LayoutClient({
+          python: settings.python ? String(settings.python) : 'python',
+          worker: settings.worker ? path.resolve(String(settings.worker)) : path.join(pluginRoot, 'layout', 'worker.py'),
+          model: settings.model ? String(settings.model) : 'PP-DocLayout-M',
+          timeout: Number(settings.timeout) || 120_000,
+        })
+      }
+      const page = await doc.getPage(pageNumber)
+      const viewport = page.getViewport({ scale: 1 })
+      const canvas = await renderPage(doc, pageNumber, 2)
+      const image = await canvas.encode('png')
+      const boxes = await layoutClient.detect(image, canvas.width, canvas.height)
+      return boxesToRegions(boxes, viewport.width, viewport.height)
+    } catch (error) {
+      if (!layoutWarned) {
+        layoutWarned = true
+        console.error('[paperflow] layout detection unavailable, falling back to heuristics:', error.message)
+      }
+      return []
+    }
   }
 
   function send(res, status, value) {
@@ -1251,7 +1284,8 @@ export function apply(ctx, config) {
     }
     try {
       const doc = await ensureDocument(id)
-      const page = await reflowPage(doc, number, mode)
+      const extraRegions = await layoutRegionsForPage(doc, number)
+      const page = await reflowPage(doc, number, mode, { extraRegions })
       persistPage(id, key, page)
       send(res, 200, page)
     } catch (error) {
@@ -1890,4 +1924,11 @@ export function apply(ctx, config) {
       },
     }),
   )
+
+  ctx.effect(() => () => {
+    if (layoutClient) {
+      layoutClient.close()
+      layoutClient = null
+    }
+  })
 }

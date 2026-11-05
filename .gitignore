@@ -3,7 +3,7 @@ node_modules/
 .venv-layout/
 
 # Local plugin data and test artifacts
-spike/.test-data/
+spike/.test-*/
 spike/.test-vault/
 spike/fixtures/
 

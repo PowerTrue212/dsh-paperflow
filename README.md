@@ -37,10 +37,33 @@ pnpm install
   config:
     vaultDir: D:\paper-vault  # 可选：知识库根目录
     dataDir: D:\paper-reader   # 可选：文献库数据目录
+    layout:                    # 可选：本地版面模型
+      enabled: false
+      python: C:\Python312\python.exe
+      model: PP-DocLayout-M
 ```
 
 - `vaultDir`：配置后，笔记导出到 `<vaultDir>/sources/self/`，问答导出到 `<vaultDir>/sources/ai/`；不配置则不写任何文件。
 - `dataDir`：默认 `%LOCALAPPDATA%\dsh-paperflow`（首次启动会尝试把旧的 `dsh-paper-reflow` 目录迁移过来）。
+- `layout`：可选，开启后用本地 PaddleOCR 版面模型找整图/表格外框（见下）。
+
+## 本地版面模型（可选）
+
+默认关闭。开启后，Host 会把每页渲染成 2x PNG，交给本机 Python 的
+[PaddleOCR LayoutDetection](https://www.paddleocr.ai/main/en/version3.x/module_usage/layout_detection.html)
+找 `figure` / `table` 外框，再把归一化坐标映射回 PDF 点裁剪。这样由多张小图、
+箭头和文字拼成的整图也能作为一张图提取；图注保留为文本。
+
+```bash
+# 建议用 python.org 的 3.12/3.13 建独立 venv（Anaconda 的 DLL 环境可能和 Paddle 冲突）
+python -m venv .venv-layout
+.venv-layout\Scripts\python -m pip install paddlepaddle paddleocr
+```
+
+模型在首次推理时自动下载（M ≈ 23 MB，L ≈ 124 MB），之后可离线使用；不需要 API Key，不按页计费。
+如果解释器/模型不可用，插件会退回到内置启发式，并在控制台提示一次。
+
+注意：版面结果会缓存进 `pages.json`；切换模型后需要清掉对应论文的页面缓存（或 bump `CACHE_VERSION`）。
 
 ## 使用
 

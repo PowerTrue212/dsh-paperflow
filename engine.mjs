@@ -845,7 +845,7 @@ export async function openDocument(file) {
   return doc
 }
 
-export async function reflowPage(doc, pageNumber, mode = 'auto') {
+export async function reflowPage(doc, pageNumber, mode = 'auto', options = {}) {
   if (mode !== 'auto' && mode !== 'two' && mode !== 'single') throw new Error('invalid mode')
   if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > doc.numPages) throw new Error('invalid page')
   const page = await doc.getPage(pageNumber)
@@ -888,13 +888,30 @@ export async function reflowPage(doc, pageNumber, mode = 'auto') {
       figures.push({ role: figure.role, bbox: [x0, last.box[3] + 4, x1, y1] })
     }
   }
-  const regions = [...tables, ...figures.filter((figure) => !tables.some((table) => {
+  const heuristicRegions = [...tables, ...figures.filter((figure) => !tables.some((table) => {
     const a = figure.bbox
     const b = table.bbox
     const x = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]))
     const y = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]))
     return (x * y) / Math.max(1, Math.min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))) > 0.25
   }))]
+  // Layout-model regions (when enabled) replace the heuristic regions they
+  // overlap; everything else keeps the fast path.
+  const extraRegions = Array.isArray(options.extraRegions) ? options.extraRegions : []
+  const regions = extraRegions.length
+    ? heuristicRegions.filter((region) => {
+        return !extraRegions.some((item) => {
+          const a = region.bbox
+          const b = item.bbox
+          const x = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]))
+          const y = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]))
+          const areaA = (a[2] - a[0]) * (a[3] - a[1])
+          const areaB = (b[2] - b[0]) * (b[3] - b[1])
+          return (x * y) / Math.max(1, Math.min(areaA, areaB)) > 0.3
+        })
+      })
+    : heuristicRegions.slice()
+  if (extraRegions.length) regions.push(...extraRegions)
   const allBoxes = regions.map((region) => region.bbox)
   const outside = lines.filter((line) => !isInside(line, allBoxes))
   const result = blocksFromLines(viewport.width, viewport.height, outside, mode, pageNumber, regions)

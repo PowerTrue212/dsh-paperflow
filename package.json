@@ -13,6 +13,8 @@
     "index.js",
     "client.js",
     "engine.mjs",
+    "layout.mjs",
+    "layout/worker.py",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
