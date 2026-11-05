@@ -48,7 +48,9 @@ export function apply(ctx, config) {
     ? path.resolve(String(config.dataDir))
     : fsSync.existsSync(defaultBase)
       ? defaultBase
-      : legacyBase
+      : fsSync.existsSync(legacyBase)
+        ? legacyBase
+        : defaultBase
   const papersDir = path.join(base, 'papers')
   const indexPath = path.join(base, 'index.json')
 
