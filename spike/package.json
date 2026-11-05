@@ -1,0 +1,9 @@
+{
+  "name": "paper-reflow-spike",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@napi-rs/canvas": "^1.1.0",
+    "pdfjs-dist": "6.3.289"
+  }
+}

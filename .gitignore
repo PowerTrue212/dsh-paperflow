@@ -1,0 +1,19 @@
+node_modules/
+.pnpm-store/
+
+# Local plugin data and test artifacts
+spike/.test-data/
+spike/.test-vault/
+spike/fixtures/
+
+# Generated images / logs
+spike/*.png
+spike/*.log
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
