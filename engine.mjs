@@ -672,10 +672,28 @@ function detectTableRegions(lines, width, height) {
 
 function insertRegions(blocks, regions, split, pageNumber) {
   const result = blocks.slice()
+  // The projection split can drift on pages whose top matter is full-width
+  // (title, author row). Use the actual x-range of each text column instead,
+  // so a figure at the top of the right column is not treated as full-width.
+  const textBlocks = blocks.filter((block) => block.kind !== 'image' && block.bbox && block.role !== 'meta')
+  const pool = textBlocks.length ? textBlocks : blocks.filter((block) => block.kind !== 'image' && block.bbox)
+  const range = (items) =>
+    items.length ? [Math.min(...items.map((item) => item.bbox[0])), Math.max(...items.map((item) => item.bbox[2]))] : null
+  const leftRange = range(pool.filter((block) => block.column === 'left'))
+  const rightRange = range(pool.filter((block) => block.column === 'right'))
   const sorted = regions.slice().sort((a, b) => a.bbox[1] - b.bbox[1])
   sorted.forEach((region, index) => {
     const box = region.bbox
-    const column = box[2] <= split + 1 ? 'left' : box[0] >= split - 1 ? 'right' : 'full'
+    let column = 'full'
+    if (leftRange && rightRange) {
+      const center = (box[0] + box[2]) / 2
+      const inLeft = center >= leftRange[0] - 2 && center <= leftRange[1] + 2
+      const inRight = center >= rightRange[0] - 2 && center <= rightRange[1] + 2
+      if (inRight && !inLeft) column = 'right'
+      else if (inLeft && !inRight) column = 'left'
+    } else {
+      column = box[2] <= split + 1 ? 'left' : box[0] >= split - 1 ? 'right' : 'full'
+    }
     let position = -1
     if (column === 'full') {
       position = result.findIndex((block) => block.bbox[1] >= box[3] - 2)

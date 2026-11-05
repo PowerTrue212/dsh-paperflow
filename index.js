@@ -26,7 +26,7 @@ try {
 
 const MAX_BYTES = 40 * 1024 * 1024
 const MAX_PAGES = 250
-const CACHE_VERSION = 9
+const CACHE_VERSION = 10
 const TRANSLATION_VERSION = 2
 const ID_RE = /^[a-f0-9]{12}$/
 const MODES = new Set(['auto', 'two', 'single'])
