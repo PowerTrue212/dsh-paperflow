@@ -38,7 +38,7 @@ const ctx = {
   },
 }
 
-apply(ctx, { dataDir })
+apply(ctx, { dataDir, layout: { enabled: false } })
 
 const server = http.createServer((req, res) => routes[0].handler(req, res))
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))

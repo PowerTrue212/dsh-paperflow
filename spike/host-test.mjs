@@ -74,7 +74,7 @@ const ctx = {
   },
 }
 
-apply(ctx, { dataDir, vaultDir: path.join(here, '.test-vault') })
+apply(ctx, { dataDir, vaultDir: path.join(here, '.test-vault'), layout: { enabled: false } })
 
 const server = http.createServer((req, res) => {
   routes[0].handler(req, res)

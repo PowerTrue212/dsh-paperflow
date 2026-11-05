@@ -80,6 +80,32 @@ export function apply(ctx, config) {
   let layoutWarned = false
   const layoutPaperCaches = new Map()
   const layoutScans = new Set()
+  // The layout model is part of the reader, not a fringe extra: without it
+  // the heuristic fallback is visibly worse. When a `.venv-layout` exists
+  // (created by layout/setup.ps1) or a python is configured, use it by
+  // default; only an explicit `enabled: false` turns it off.
+  const layoutSettings = (() => {
+    const raw = config && config.layout
+    const venvPython = path.join(pluginRoot, '.venv-layout', 'Scripts', 'python.exe')
+    if (!raw) {
+      if (!fsSync.existsSync(venvPython)) return null
+      return {
+        python: venvPython,
+        worker: path.join(pluginRoot, 'layout', 'worker.py'),
+        model: 'PP-DocLayout-M',
+        timeout: 120_000,
+      }
+    }
+    if (raw.enabled === false) return null
+    const python = raw.python ? String(raw.python) : venvPython
+    if (!raw.enabled && !raw.python && !fsSync.existsSync(python)) return null
+    return {
+      python,
+      worker: raw.worker ? path.resolve(String(raw.worker)) : path.join(pluginRoot, 'layout', 'worker.py'),
+      model: raw.model ? String(raw.model) : 'PP-DocLayout-M',
+      timeout: Number(raw.timeout) || 120_000,
+    }
+  })()
 
   function guard(req, res) {
     // Resolve per request: the connection service may activate after this
@@ -274,10 +300,9 @@ export function apply(ctx, config) {
   }
 
   async function layoutRegionsForPage(id, doc, pageNumber) {
-    const settings = config && config.layout
-    if (!settings || !settings.enabled) return { regions: [], twoColumn: false, ok: false }
+    if (!layoutSettings) return { regions: [], twoColumn: false, ok: false }
     const cache = await layoutCacheFor(id)
-    const model = settings.model ? String(settings.model) : 'PP-DocLayout-M'
+    const model = layoutSettings.model
     if (cache.data.model !== model) {
       cache.data = { version: 1, model, pages: {} }
       persistLayoutCache(id)
@@ -285,7 +310,7 @@ export function apply(ctx, config) {
     const key = String(pageNumber)
     if (cache.data.pages[key]) return { ...cache.data.pages[key], ok: cache.data.pages[key].ok !== false }
     try {
-      const detected = await detectLayoutPage(doc, pageNumber, settings)
+      const detected = await detectLayoutPage(doc, pageNumber, layoutSettings)
       cache.data.pages[key] = detected
       persistLayoutCache(id)
       return { ...detected, ok: true }
@@ -296,7 +321,7 @@ export function apply(ctx, config) {
       }
       return { regions: [], twoColumn: false, ok: false }
     } finally {
-      startLayoutScan(id, doc, settings)
+      startLayoutScan(id, doc, layoutSettings)
     }
   }
 
@@ -1375,7 +1400,7 @@ export function apply(ctx, config) {
 
     const cache = await pageCache(id)
     const key = `${number}:${mode}${
-      config?.layout?.enabled ? `:layout:${String(config.layout.model || 'default').replace(/[^a-z0-9]/gi, '')}` : ''
+      layoutSettings ? `:layout:${String(layoutSettings.model || 'default').replace(/[^a-z0-9]/gi, '')}` : ''
     }`
     if (cache.data.pages[key]) {
       send(res, 200, cache.data.pages[key])

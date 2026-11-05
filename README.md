@@ -40,7 +40,7 @@ AI 还可以通过 `paper_read` 和 `paper_search` 读取、搜索论文内容�
 - **笔记与导出**：段级批注保存到本地，可导出为 `sources/self/` 下的 Markdown；问答可转存 `sources/ai/`。
 - **文献库**：文件夹、搜索、改名、删除；支持本地 PDF、arXiv、网页文章入库。
 - **独立会话**：每篇论文一个会话，聊天记录随论文隔离。
-- **本地版面模型（可选）**：PaddleOCR 找整图/表格外框，多张小图拼成的插图也能整张提取；不需要 API Key。
+- **本地版面模型**：PaddleOCR 找整图/表格外框，多张小图拼成的插图也能整张提取；不需要 API Key。
 
 ## 安装
 
@@ -52,6 +52,16 @@ pnpm install
 ```
 
 通过 DSH 的 `plugin_manager` 使用 `install_bundle` 将本目录安装为插件，或通过 `link:` 添加至当前 profile 的 `dependencies`。
+
+### 安装版面模型（必需）
+
+没有版面模型时，复杂插图、表格和“图占半栏”的页面会退回启发式，效果会明显下降。
+
+```powershell
+.\layout\setup.ps1 -Python C:\Python312\python.exe
+```
+
+脚本会创建 `.venv-layout`、安装 `paddlepaddle` / `paddleocr` 并验证 import。安装完成后插件会自动启用，不需要改配置。
 
 重启 DSH 后，在右侧栏打开「论文阅读」即可使用。
 
@@ -66,41 +76,36 @@ pnpm install
   config:
     vaultDir: D:\paper-vault  # 可选：知识库根目录
     dataDir: D:\paper-reader  # 可选：文献库数据目录
-    layout:                   # 可选：本地版面模型
-      enabled: false
+    layout:                   # 通常不用写：安装 .venv-layout 后自动启用
+      enabled: true
       python: C:\Python312\python.exe
       model: PP-DocLayout-M
 ```
 
 - `vaultDir`：配置后，笔记导出到 `<vaultDir>/sources/self/`，问答导出到 `<vaultDir>/sources/ai/`；不配置则不写任何文件。
 - `dataDir`：默认 `%LOCALAPPDATA%\dsh-paperflow`（首次启动会把旧的 `dsh-paper-reflow` / `dsh-paper-reader` 目录迁移过来）。
-- `layout`：可选，开启后用本地 PaddleOCR 版面模型找整图/表格外框（见下）。
+- `layout`：通常不需要写；安装 `.venv-layout` 后自动启用。可以用 `model` 换模型，或用 `enabled: false` 临时关闭。
 
-## 本地版面模型（可选）
+## 本地版面模型
 
-默认关闭。开启后，Host 会把每页渲染成 2x PNG，交给本机 Python 的
+安装后默认启用（检测到 `.venv-layout`，或配置了 `layout.python`）。Host 会把每页渲染成 2x PNG，交给本机 Python 的
 [PaddleOCR LayoutDetection](https://www.paddleocr.ai/main/en/version3.x/module_usage/layout_detection.html)
 找 `figure` / `table` 外框，再把归一化坐标映射回 PDF 点裁剪。这样由多张小图、
 箭头和文字拼成的整图也能作为一张图提取；图注保留为文本。
 
-建议用 python.org 的 3.12/3.13 建独立 venv（Anaconda 的 DLL 环境可能和 Paddle 冲突）：
-
-```powershell
-.\layout\setup.ps1 -Python C:\Python312\python.exe
-```
-
-脚本会创建 `.venv-layout`、安装 `paddlepaddle` / `paddleocr` 并验证 import。之后把
-`layout.enabled` 设为 `true`，`layout.python` 指向 `.venv-layout\Scripts\python.exe`。
-
 模型在首次推理时自动下载（M ≈ 23 MB，L ≈ 124 MB），之后可离线使用；不需要 API Key，不按页计费。
-如果解释器/模型不可用，插件会退回到内置启发式，并在控制台提示一次。
+
+如果解释器/模型不可用，插件会退回内置启发式，并在控制台提示一次。这个回退明显不如模型，
+建议按上面的安装步骤把 `.venv-layout` 装好；临时排查问题可以用 `layout.enabled: false` 关闭。
 
 第一次打开一篇论文时，Host 会在后台把其余页面依次跑一遍，结果写进 `papers/<id>/layout.json`；
 之后翻页直接读缓存，不再等模型。可以把它理解成“开头慢一次，后面都快”。
 
+觉得 M 模型漏图时，把 `layout.model` 换成 `PP-DocLayout-L`（约 124 MB，更慢但更准）。
+
 ## 已知限制
 
-- 默认启发式版面分析不支持扫描件（无文本层）、复杂合并单元格和竖排文字；开启版面模型后由模型给整图/表格框，模型漏检的页不会再回退启发式。
+- 启发式回退不支持扫描件（无文本层）、复杂合并单元格和竖排文字；版面模型漏检的页不会再用启发式补救。
 - 网页只提取 HTML 正文；纯 JavaScript 渲染或需要登录的页面可能抓不到；只取 `<img>`，不含 CSS 背景图。
 - Node 的 `fetch` 不走系统代理，被墙站点会失败。
 - SSRF 防护只覆盖常见内网地址段，不防 DNS rebinding；建议只在本机可信环境使用。
