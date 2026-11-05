@@ -1,5 +1,6 @@
 node_modules/
 .pnpm-store/
+.venv-layout/
 
 # Local plugin data and test artifacts
 spike/.test-data/
